@@ -142,7 +142,7 @@ namespace Carnage_Clips
             //https://raw.githubusercontent.com/sabis328/GuardianTheaterDesktop/main/Guardian%20Theater%20Desktop/Properties/AssemblyInfo.cs
             //https://github.com/sabis328/GuardianTheaterDesktop/blob/main/Guardian%20Theater%20Desktop/bin/Debug/Guardian%20Theater%20Desktop.exe?raw=true
 
-            HttpWebRequest client = (HttpWebRequest)WebRequest.Create("https://raw.githubusercontent.com/sabis328/GuardianTheaterDesktop/main/Guardian%20Theater%20Desktop/Properties/AssemblyInfo.cs");
+            HttpWebRequest client = (HttpWebRequest)WebRequest.Create("https://raw.githubusercontent.com/sabis328/CarnageClips/main/Carnage%20Clips/Properties/AssemblyInfo.cs");
             string LatestVerion;
             using (HttpWebResponse response = (HttpWebResponse)client.GetResponse())
             {
@@ -177,7 +177,7 @@ namespace Carnage_Clips
             System.Diagnostics.Debug.Print("updating application");
             WebClient Downloader = new WebClient();
 
-            byte[] filebuffer = Downloader.DownloadData("https://github.com/sabis328/GuardianTheaterDesktop/blob/main/Guardian%20Theater%20Desktop/bin/Debug/Guardian%20Theater%20Desktop.exe?raw=true");
+            byte[] filebuffer = Downloader.DownloadData("https://github.com/sabis328/CarnageClips/blob/main/Carnage%20Clips/bin/Debug/Carnage%20Clips.exe?raw=true");
             var appLoc = System.Reflection.Assembly.GetExecutingAssembly().Location;
             string CurrentPath = Path.GetFileName(appLoc);
             string CurrentPathTrimmed = Path.Combine(Path.GetDirectoryName(appLoc), Path.GetFileNameWithoutExtension(appLoc));
@@ -209,6 +209,7 @@ namespace Carnage_Clips
 
         public MainForm()
         {
+            Task.Run(() => AutoUpdate());
             InitializeComponent();
             HideCharacterPanel();
             CarnageCountReq = 5;
