@@ -81,6 +81,8 @@ namespace Carnage_Clips
             this.treePlayers.Name = "treePlayers";
             this.treePlayers.Size = new System.Drawing.Size(382, 333);
             this.treePlayers.TabIndex = 4;
+            this.treePlayers.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.treePlayers_AfterSelect);
+            this.treePlayers.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.treePlayers_MouseDoubleClick);
             // 
             // lblCarnageReports
             // 
@@ -146,6 +148,7 @@ namespace Carnage_Clips
             this.button2.TabIndex = 16;
             this.button2.Text = "Export Streams";
             this.button2.UseVisualStyleBackColor = false;
+            this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
             // label3
             // 

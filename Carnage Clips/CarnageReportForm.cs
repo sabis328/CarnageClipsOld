@@ -608,5 +608,45 @@ namespace Carnage_Clips
                 }
             }
         }
+
+        private void treePlayers_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+            if (e.Node.Tag != null && e.Node.Tag.GetType() == typeof(string))
+            {
+                Clipboard.SetText((string)e.Node.Tag);
+                e.Node.Expand();
+            }
+        }
+
+        private void treePlayers_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (treePlayers.Nodes.Count > 0)
+            {
+                string StreamList = "";
+                foreach (TreeNode streamHeader in treePlayers.Nodes)
+                {
+                    StreamList += streamHeader.Text + "\n\n";
+                    foreach (TreeNode streamText in streamHeader.Nodes)
+                    {
+                        StreamList += streamText.Text + "\n" + streamText.Nodes[0].Text + "\n" + streamText.Nodes[1].Text + "\n\n";
+                    }
+                }
+
+                string path = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                string ticks = Environment.TickCount.ToString();
+                path += "\\" + ticks + ".txt";
+
+                StreamWriter sw = new StreamWriter(path);
+                sw.WriteLine(StreamList);
+                sw.Close();
+
+                System.Diagnostics.Process.Start(path);
+            }
+        }
     }
 }
