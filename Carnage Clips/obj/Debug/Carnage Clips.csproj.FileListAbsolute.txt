@@ -19,3 +19,4 @@ C:\Users\abis3\OneDrive\Desktop\Carnage Clips\obj\Debug\Carnage Clips.pdb
 F:\Coding Projects\Carnage Clips\obj\Debug\Carnage_Clips.UserSearchForm.resources
 F:\Coding Projects\Carnage Clips\obj\Debug\Carnage_Clips.MainForm.resources
 F:\Coding Projects\Carnage Clips\obj\Debug\Carnage_Clips.CarnageReportForm.resources
+F:\Coding Projects\Carnage Clips\obj\Debug\Carnage Clips.csprojAssemblyReference.cache

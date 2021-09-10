@@ -109,7 +109,7 @@ namespace Carnage_Clips
             switch(e)
             {
                 case Bungie_API_Client.Client_Event_Type.SingleCarnageComplete:
-                    SetStatusMessage("Loading matches ",ReportClient.ReportsLoaded, ReportClient.ReportsToLoad);
+                    SetStatusMessage("Loading matches ",1, ReportClient.ReportsToLoad);
                     break;
                 case Bungie_API_Client.Client_Event_Type.AllCarnageComplete:
                     SetIdle();
@@ -195,7 +195,8 @@ namespace Carnage_Clips
 
             if (treePlayers.Nodes.Count > 0)
             {
-                
+                progressBar1.Value = 0;
+                progressBar1.Maximum = PlayersToCheck;
                 TwitchLinkedPlayers = new List<Bungie_Profile>();
                 RecentPlayerClients = new List<Bungie_API_Client>();
                 PlayersToCheck = treePlayers.Nodes.Count;
@@ -318,11 +319,11 @@ namespace Carnage_Clips
 
                         System.Diagnostics.Debug.Print("Twitch foudn for " + ReturnedUser.Bungie_Display_Name);
                     }
-                    SetStatusMessage("Checking players for linked twitch accounts ",PlayersChecked, PlayersToCheck);
+                    SetStatusMessage("Checking players for linked twitch accounts ",1, PlayersToCheck);
                     break;
                 case Bungie_API_Client.Client_Event_Type.RecentPlayerBnetFailed:
          
-                    SetStatusMessage("Checking players for linked twitch accounts ",PlayersChecked, PlayersToCheck);
+                    SetStatusMessage("Checking players for linked twitch accounts ",1, PlayersToCheck);
                     break;
             }
 
