@@ -102,7 +102,7 @@ namespace Carnage_Clips
             this.btnDashboard.Name = "btnDashboard";
             this.btnDashboard.Size = new System.Drawing.Size(192, 45);
             this.btnDashboard.TabIndex = 12;
-            this.btnDashboard.Text = "Dsashboard";
+            this.btnDashboard.Text = "Dashboard";
             this.btnDashboard.UseVisualStyleBackColor = false;
             this.btnDashboard.Click += new System.EventHandler(this.btnDashboard_Click);
             // 

@@ -14,6 +14,9 @@ namespace Carnage_Clips
 {
     public partial class MainForm : Form
     {
+
+        public Twitch_Client Main_Twitch_Client { get; set; }
+
         UserSearchForm SearchForm;
         CarnageReportForm CarnageForm;
         public int CarnageCountReq { get; set; }
@@ -226,6 +229,28 @@ namespace Carnage_Clips
             SearchForm.Dock = DockStyle.Fill;
             CarnageForm.Dock = DockStyle.Fill;
             SearchForm.BringToFront();
+            Task.Run(() => ValidateTwitch());
+        }
+
+        public void ValidateTwitch()
+        {
+            Main_Twitch_Client = new Twitch_Client();
+            Main_Twitch_Client.Twitch_ClientID = "abvhdv9zyqhefmnbjz3fljxx3hpc7u";
+            Main_Twitch_Client.Twitch_Client_Secret = "h7bled1w6wracl3bytlhqwra3d7pr8";
+            Main_Twitch_Client.Twitch_Validation_Event += Main_Twitch_Client_Twitch_Validation_Event;
+            Main_Twitch_Client.Validate_Twitch_Client();
+        }
+
+        private void Main_Twitch_Client_Twitch_Validation_Event(object sender, Twitch_Client.Twitch_Validation_Status e)
+        {
+            switch(e)
+            {
+                case Twitch_Client.Twitch_Validation_Status.Success:
+                    break;
+                default:
+                    Environment.Exit(0);
+                    break;
+            }
         }
 
         private void btnCharacter1_Click(object sender, EventArgs e)

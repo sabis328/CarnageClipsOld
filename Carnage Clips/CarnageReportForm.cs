@@ -338,132 +338,159 @@ namespace Carnage_Clips
 
         #region Checking for VODS and Resetting StreamTree
 
-        private void CheckTwitchVODS()
+        private void CheckUserVods(Bungie_Profile InputUser)
         {
-            List<TreeNode> ResetStreamNodes = new List<TreeNode>();
-            Twitch_Client vodClient = new Twitch_Client();
-            vodClient.Twitch_ClientID = "abvhdv9zyqhefmnbjz3fljxx3hpc7u";
-            vodClient.Twitch_Client_Secret = "h7bled1w6wracl3bytlhqwra3d7pr8";
-            vodClient.Validate_Twitch_Client();
-
-
-            if (vodClient.Is_Validated == Twitch_Client.Twitch_Validation_Status.Success)
+          
+            if (parent.Main_Twitch_Client.Is_Validated == Twitch_Client.Twitch_Validation_Status.Success)
             {
+                Twitch_Client vodClient = new Twitch_Client();
+                vodClient.Twitch_ClientID = "abvhdv9zyqhefmnbjz3fljxx3hpc7u";
+                vodClient.Twitch_Client_Secret = "h7bled1w6wracl3bytlhqwra3d7pr8";
+                vodClient.Twitch_Client_Token = parent.Main_Twitch_Client.Twitch_Client_Token;
+
                 try
                 {
-                    foreach (Bungie_Profile linkedGuardian in TwitchLinkedPlayers)
+                    vodClient.Twitch_Find_Channels(InputUser.TwitchName, true);
+                    if (vodClient.Found_Channels.Count > 0)
                     {
-                        vodClient.Twitch_Find_Channels(linkedGuardian.TwitchName, true);
 
-                        if (vodClient.Found_Channels.Count > 0)
+                        TwitchCreator possibleStreaamer = vodClient.Found_Channels[0];
+                        vodClient.Load_Channel_Videos(possibleStreaamer);
+
+                        //linkedGuardian.liveNow = possibleStreaamer.Live_Now;
+
+                        System.Diagnostics.Debug.Print("user " + possibleStreaamer.Username + " is live ");
+
+                        if (possibleStreaamer.Channel_Saved_Videos != null && possibleStreaamer.Channel_Saved_Videos.Count > 0)
                         {
 
-                            TwitchCreator possibleStreaamer = vodClient.Found_Channels[0];
-                            vodClient.Load_Channel_Videos(possibleStreaamer);
+                            TreeNode MatchedStreamNode = new TreeNode(InputUser.Bungie_Display_Name + " | twitch.tv/" + InputUser.TwitchName);
+                            MatchedStreamNode.Tag = InputUser;
 
-                            //linkedGuardian.liveNow = possibleStreaamer.Live_Now;
-
-                            System.Diagnostics.Debug.Print("user " + possibleStreaamer.Username + " is live ");
-
-                            if (possibleStreaamer.Channel_Saved_Videos != null && possibleStreaamer.Channel_Saved_Videos.Count > 0)
+                            foreach (TwitchVideo vod in possibleStreaamer.Channel_Saved_Videos)
                             {
+                                int i = 0;
 
-                                TreeNode MatchedStreamNode = new TreeNode(linkedGuardian.Bungie_Display_Name + " | twitch.tv/" + linkedGuardian.TwitchName);
-                                MatchedStreamNode.Tag = linkedGuardian;
-
-                                foreach (TwitchVideo vod in possibleStreaamer.Channel_Saved_Videos)
+                                while (i < InputUser.LinkedMatchTimes.Count)
                                 {
-                                    int i = 0;
+                                    DateTime AccountforDuration = vod.videoCreated;
+                                    AccountforDuration += vod.videoDuration;
+                                    DateTime CheckAgainst = InputUser.LinkedMatchTimes[i];
 
-                                    while (i < linkedGuardian.LinkedMatchTimes.Count)
+                                    if (vod.videoCreated.Date == CheckAgainst.Date || CheckAgainst.Ticks < AccountforDuration.Ticks)
                                     {
-                                        DateTime AccountforDuration = vod.videoCreated;
-                                        AccountforDuration += vod.videoDuration;
-                                        DateTime CheckAgainst = linkedGuardian.LinkedMatchTimes[i];
-
-                                        if (vod.videoCreated.Date == CheckAgainst.Date || CheckAgainst.Ticks < AccountforDuration.Ticks)
+                                        if (CheckAgainst.Ticks > vod.videoCreated.Ticks && CheckAgainst.Ticks < AccountforDuration.Ticks)
                                         {
-                                            if (CheckAgainst.Ticks > vod.videoCreated.Ticks && CheckAgainst.Ticks < AccountforDuration.Ticks)
+
+                                            TimeSpan offset = CheckAgainst.TimeOfDay - vod.videoCreated.TimeOfDay;
+
+                                            System.Diagnostics.Debug.Print("offseting : " + offset.ToString());
+
+                                            if (offset.Hours < 0)
                                             {
-                                                
-                                                TimeSpan offset = CheckAgainst.TimeOfDay - vod.videoCreated.TimeOfDay;
-
-                                                System.Diagnostics.Debug.Print("offseting : " + offset.ToString());
-
-                                                if (offset.Hours < 0)
-                                                {
-                                                    offset = offset.Add(new TimeSpan(24, 0, 0));
-                                                    System.Diagnostics.Debug.Print("Corrected Negative offset : " + offset.ToString());
-                                                }
-
-
-                                                string twitchLink = "http://www.twitch.tv";
-
-                                                if (vod.videoDuration.ToString().Contains("."))
-                                                {
-                                                    int Voddays = 0;
-
-                                                    string[] daySplit = vod.videoDuration.ToString().Split('.');
-
-                                                    Voddays = Convert.ToInt32(daySplit[0].ToString());
-
-                                                    Voddays *= 24;
-
-                                                    Voddays += offset.Hours;
-
-                                                    twitchLink = vod.videoLink + "?t=" + Voddays.ToString() + "h" + offset.Minutes + "m" + offset.Seconds + "s";
-
-                                                }
-                                                else
-                                                {
-                                                    twitchLink = vod.videoLink + "?t=" + offset.Hours + "h" + offset.Minutes + "m" + offset.Seconds + "s";
-                                                }
-
-
-
-
-                                                System.Diagnostics.Debug.Print("ADDING MATCH NODE : for " + linkedGuardian.Bungie_Display_Name + " | linked matches found : " + linkedGuardian.LinkedMatches.Count.ToString() + " on match : " + i.ToString());
-                                                TreeNode twitchNode = new TreeNode(twitchLink);
-
-                                                twitchNode.Nodes.Add(linkedGuardian.LinkedMatchTimes[i].ToString());
-                                                twitchNode.Nodes.Add(linkedGuardian.LinkedMatches[i].ActivityTypeID + " | " + linkedGuardian.LinkedMatches[i].ActivitySpaceID);
-                                                twitchNode.Tag = twitchLink;
-                                                twitchNode.Nodes[0].Tag = twitchLink;
-                                                twitchNode.Nodes[1].Tag = twitchLink;
-                                                MatchedStreamNode.Nodes.Add(twitchNode);
-
+                                                offset = offset.Add(new TimeSpan(24, 0, 0));
+                                                System.Diagnostics.Debug.Print("Corrected Negative offset : " + offset.ToString());
                                             }
 
+
+                                            string twitchLink = "http://www.twitch.tv";
+
+                                            if (vod.videoDuration.ToString().Contains("."))
+                                            {
+                                                int Voddays = 0;
+
+                                                string[] daySplit = vod.videoDuration.ToString().Split('.');
+
+                                                Voddays = Convert.ToInt32(daySplit[0].ToString());
+
+                                                Voddays *= 24;
+
+                                                Voddays += offset.Hours;
+
+                                                twitchLink = vod.videoLink + "?t=" + Voddays.ToString() + "h" + offset.Minutes + "m" + offset.Seconds + "s";
+
+                                            }
+                                            else
+                                            {
+                                                twitchLink = vod.videoLink + "?t=" + offset.Hours + "h" + offset.Minutes + "m" + offset.Seconds + "s";
+                                            }
+
+
+
+
+                                            System.Diagnostics.Debug.Print("ADDING MATCH NODE : for " + InputUser.Bungie_Display_Name + " | linked matches found : " + InputUser.LinkedMatches.Count.ToString() + " on match : " + i.ToString());
+                                            TreeNode twitchNode = new TreeNode(twitchLink);
+
+                                            twitchNode.Nodes.Add(InputUser.LinkedMatchTimes[i].ToString());
+                                            twitchNode.Nodes.Add(InputUser.LinkedMatches[i].ActivityTypeID + " | " + InputUser.LinkedMatches[i].ActivitySpaceID);
+                                            twitchNode.Tag = twitchLink;
+                                            twitchNode.Nodes[0].Tag = twitchLink;
+                                            twitchNode.Nodes[1].Tag = twitchLink;
+                                            MatchedStreamNode.Nodes.Add(twitchNode);
+
                                         }
-                                        i += 1;
+
                                     }
+                                    i += 1;
                                 }
-
-                                if (MatchedStreamNode.Nodes.Count > 0)
-                                {
-                                    ResetStreamNodes.Add(MatchedStreamNode);
-                                }
-
                             }
 
+                            if (MatchedStreamNode.Nodes.Count > 0)
+                            {
+                                ResetStreamNodes.Add(MatchedStreamNode);
+                            }
 
                         }
-
-                        //UpdateStatusMessage
-                        SetStatusMessage("Processing linked twitch accounts for vods " + (progressBar1.Value + 1).ToString() + "/" + progressBar1.Maximum.ToString(), 1, 0);
                     }
-
-                    ResetStreamTree(ResetStreamNodes);
                 }
                 catch
-                { SetStatusMessage("Error occured loading vods, try refreshing matches"); }
+                {
 
-                IsBusy = false;
+                }
+
+                SetStatusMessage("Processing linked twitch accounts for vods ", 1, 0);
+                CHannelsCrawled += 1;
+
+                if(CHannelsCrawled >= ChannelsToCrawl)
+                {
+                    IsBusy = false;
+                    DisplayVODS();
+
+                }
             }
-            else
+        }
+
+        private void DisplayVODS()
+        {
+            if(InvokeRequired)
             {
-                SetStatusMessage("Failed to validate twitch client", 0, 0);
-                IsBusy = false;
+                this.BeginInvoke((MethodInvoker)delegate
+                { DisplayVODS(); });
+                return;
+            }
+            IsBusy = false;
+            treePlayers.Nodes.Clear();
+            ResetStreamTree(ResetStreamNodes);
+        }
+
+        private List<TreeNode> ResetStreamNodes;
+        private int ChannelsToCrawl = 0;
+        private int CHannelsCrawled = 0;
+
+        private void CheckTwitchVODS()
+        {
+            IsBusy = true;
+            ResetStreamNodes = new List<TreeNode>();
+            ChannelsToCrawl = TwitchLinkedPlayers.Count;
+            CHannelsCrawled = 0;
+
+            progressBar1.Value = 0;
+            progressBar1.Maximum = ChannelsToCrawl;
+            SetStatusMessage("Checking users for vods", 0, ChannelsToCrawl);
+
+            foreach(Bungie_Profile checkUser in TwitchLinkedPlayers)
+            {
+                Task.Run(() => CheckUserVods(checkUser));
             }
         }
 

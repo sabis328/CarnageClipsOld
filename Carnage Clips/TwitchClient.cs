@@ -37,8 +37,7 @@ namespace Carnage_Clips
         public void Validate_Twitch_Client()
         {
 
-            //Twitch_ClientID = "abvhdv9zyqhefmnbjz3fljxx3hpc7u";
-            //Twitch_Client_Secret = "h7bled1w6wracl3bytlhqwra3d7pr8";
+            
             string twitch_val_link = twitch_validation_base + Twitch_ClientID + twitch_validation_mid + Twitch_Client_Secret + twitch_validation_end;
 
             string ValidationBody = "";
@@ -97,6 +96,7 @@ namespace Carnage_Clips
 
         public void Twitch_Find_Channels(string searchFor, bool matchName)
         {
+            ServicePointManager.DefaultConnectionLimit = 15;
             System.Diagnostics.Debug.Print("Searching for : " + searchFor);
             Found_Channels = new List<TwitchCreator>();
             List<string> channelJSON = new List<string>();
@@ -179,6 +179,7 @@ namespace Carnage_Clips
         public event EventHandler<TwitchCreator> Videos_Failed_Load;
         public TwitchCreator Load_Channel_Videos(TwitchCreator channel)
         {
+            ServicePointManager.DefaultConnectionLimit = 15;
             string requestBase = "https://api.twitch.tv/helix/videos?user_id=";
             string requestBody;
 
@@ -248,7 +249,7 @@ namespace Carnage_Clips
 
         private List<TwitchVideo> Parse_Video_Json(List<string> videoInfoJSON)
         {
-
+            ServicePointManager.DefaultConnectionLimit = 15;
             if (videoInfoJSON.Count > 0)
             {
                 List<TwitchVideo> videoinfoArray = new List<TwitchVideo>();
@@ -268,15 +269,13 @@ namespace Carnage_Clips
                         end = videoJSON.IndexOf(",") - 1;
 
                         video.videoID = videoJSON.Substring(start, end - start);
-                        // System.Diagnostics.Debug.Print("id found : " + video.videoID);
-
-
+                       
                         start = videoJSON.IndexOf("title", start) + 8;
 
-                        // System.Diagnostics.Debug.Print("title start : " + start);
+                        
                         end = videoJSON.IndexOf(",\"description", start) - 1;
 
-                        // System.Diagnostics.Debug.Print("title end : " + end);
+                     
 
                         video.videoTitle = videoJSON.Substring(start, end - start);
 
@@ -407,8 +406,6 @@ namespace Carnage_Clips
                     string tempHold = ChannelJSON.Substring(start, end - start);
 
                     Stream_Start = Convert.ToDateTime(tempHold);
-
-                    //System.Diagnostics.Debug.Print(ChannelJSON.ToString());
 
                 }
                 else
