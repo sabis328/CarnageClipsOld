@@ -625,14 +625,24 @@ namespace Carnage_Clips
                     int i = 1;
                     foreach (string matchID in Matches)
                     {
-                        System.Diagnostics.Debug.Print( "Match Number " + i.ToString() + " :   " + matchID);
-                        Task.Run(() => LoadSingleCarnageReport(matchID, SelectedChar.AccountOwner));
-                        i++;                    }
+                        if (!CancelAll)
+                        {
+                            System.Diagnostics.Debug.Print("Match Number " + i.ToString() + " :   " + matchID);
+                            Task.Run(() => LoadSingleCarnageReport(matchID, SelectedChar.AccountOwner));
+                            i++;
+                        }
+                        else
+                        {
+                            API_Client_Event?.Invoke("AllMatch", Client_Event_Type.CancelAll);
+                            return;
+                        }
+                    }
+
 
                 }
                 catch
-                { 
-                
+                {
+                    API_Client_Event?.Invoke(null, Client_Event_Type.AllCarnageFail);
                 }
 
             }
@@ -749,6 +759,10 @@ namespace Carnage_Clips
             try
             {
 
+                if(CancelAll)
+                {
+                    API_Client_Event?.Invoke("SingleMatch", Client_Event_Type.CancelAll);
+                }
                 
                 PGCR.ActivityRefID = matchID;
                 
@@ -848,35 +862,47 @@ namespace Carnage_Clips
                     {
                         foreach (Bungie_Profile g in RecentPlayers)
                         {
-                            if (g.MainAccountID == matchPlayer.MainAccountID)
+                            try
                             {
-                                g.LinkedMatches.Add(PGCR);
-                                g.LinkedMatchTimes.Add(PGCR.ActivityStart);
+                                if (g.MainAccountID == matchPlayer.MainAccountID)
+                                {
+                                    g.LinkedMatches.Add(PGCR);
+                                    g.LinkedMatchTimes.Add(PGCR.ActivityStart);
+                                }
+                            }
+                            catch
+                            {
+
                             }
                         }
                     }
 
                 }
 
-                
-                PGCR.ActivityPlayers = matchPlayers;
-                ReportsLoaded += 1;
-                RecentMatches.Add(PGCR);
-
-                System.Diagnostics.Debug.Print("match " + ReportsLoaded + "/" + ReportsToLoad);
-                API_Client_Event?.Invoke(PGCR, Client_Event_Type.SingleCarnageComplete);               
-               
-               
-
-                if (ReportsLoaded == ReportsToLoad)
+                if (!CancelAll)
                 {
-                    System.Diagnostics.Debug.Print("All matches loaded");
-                    RecentMatches.Sort((x, y) => y.ActivityStart.CompareTo(x.ActivityStart));
+                    PGCR.ActivityPlayers = matchPlayers;
+                    ReportsLoaded += 1;
+                    RecentMatches.Add(PGCR);
 
-                    API_Client_Event?.Invoke(PGCR, Client_Event_Type.AllCarnageComplete);
-                    return;
+                    System.Diagnostics.Debug.Print("match " + ReportsLoaded + "/" + ReportsToLoad);
+                    API_Client_Event?.Invoke(PGCR, Client_Event_Type.SingleCarnageComplete);
+
+
+
+                    if (ReportsLoaded == ReportsToLoad)
+                    {
+                        System.Diagnostics.Debug.Print("All matches loaded");
+                        RecentMatches.Sort((x, y) => y.ActivityStart.CompareTo(x.ActivityStart));
+
+                        API_Client_Event?.Invoke(PGCR, Client_Event_Type.AllCarnageComplete);
+                        return;
+                    }
                 }
-
+                else
+                {
+                    API_Client_Event?.Invoke("SingleMatch", Client_Event_Type.CancelAll);
+                }
                
             }
             catch (Exception ex)

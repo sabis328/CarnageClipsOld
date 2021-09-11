@@ -117,8 +117,17 @@ namespace Carnage_Clips
                     Display_Matches_and_Players();
                     break;
                 case Bungie_API_Client.Client_Event_Type.SingleCarnageFail:
+                    SetStatusMessage("Loading matches ", 1, ReportClient.ReportsToLoad);
+                    if(ReportClient.ReportsLoaded == ReportClient.ReportsToLoad)
+                    {
+                        SetIdle();
+                        IsBusy = false;
+                        Display_Matches_and_Players();
+                    }
                     break;
                 case Bungie_API_Client.Client_Event_Type.AllCarnageFail:
+                    SetIdle();
+                    IsBusy = false;
                     break;
             }
         }
@@ -322,11 +331,12 @@ namespace Carnage_Clips
                     SetStatusMessage("Checking players for linked twitch accounts ",1, PlayersToCheck);
                     break;
                 case Bungie_API_Client.Client_Event_Type.RecentPlayerBnetFailed:
-         
+                    //PlayersChecked += 1;
                     SetStatusMessage("Checking players for linked twitch accounts ",1, PlayersToCheck);
                     break;
             }
 
+            System.Diagnostics.Debug.Print("Players checked : " + PlayersChecked + "/" + PlayersToCheck);
             if(PlayersToCheck == PlayersChecked)
             {
                 
@@ -675,6 +685,11 @@ namespace Carnage_Clips
 
                 System.Diagnostics.Process.Start(path);
             }
+        }
+
+        private void btnSearch_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
