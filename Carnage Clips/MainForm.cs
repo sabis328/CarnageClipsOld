@@ -277,7 +277,7 @@ namespace Carnage_Clips
 
             Task.Run(() => ValidateTwitch());
 
-            DownloadManifest();
+            Task.Run(() => DownloadManifest());
         }
 
         public void DownloadManifest()
@@ -286,7 +286,7 @@ namespace Carnage_Clips
             
             HttpWebRequest reportClient = (HttpWebRequest)WebRequest.Create(requestURL);
             reportClient.Method = "GET";
-            reportClient.Headers.Add("X-API-KEY", "");
+            reportClient.Headers.Add("X-API-KEY", "9efe9b8eba3042afb081121d447fd981" );
             reportClient.KeepAlive = false;
 
             string responseBody = "";
