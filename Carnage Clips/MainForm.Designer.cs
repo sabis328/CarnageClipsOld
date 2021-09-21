@@ -34,6 +34,7 @@ namespace Carnage_Clips
             this.panelMenuContainer = new System.Windows.Forms.Panel();
             this.btnDashboard = new System.Windows.Forms.Button();
             this.panelCarnageSettings = new System.Windows.Forms.Panel();
+            this.comboBox2 = new System.Windows.Forms.ComboBox();
             this.numericUpDown1 = new System.Windows.Forms.NumericUpDown();
             this.label2 = new System.Windows.Forms.Label();
             this.btnCarnageSettings = new System.Windows.Forms.Button();
@@ -66,7 +67,7 @@ namespace Carnage_Clips
             this.pictureBox1.Location = new System.Drawing.Point(0, 0);
             this.pictureBox1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(202, 100);
+            this.pictureBox1.Size = new System.Drawing.Size(202, 137);
             this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pictureBox1.TabIndex = 5;
             this.pictureBox1.TabStop = false;
@@ -98,7 +99,7 @@ namespace Carnage_Clips
             this.btnDashboard.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDashboard.Font = new System.Drawing.Font("Microsoft YaHei UI", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnDashboard.ForeColor = System.Drawing.Color.White;
-            this.btnDashboard.Location = new System.Drawing.Point(10, 442);
+            this.btnDashboard.Location = new System.Drawing.Point(10, 479);
             this.btnDashboard.Name = "btnDashboard";
             this.btnDashboard.Size = new System.Drawing.Size(192, 45);
             this.btnDashboard.TabIndex = 12;
@@ -108,20 +109,38 @@ namespace Carnage_Clips
             // 
             // panelCarnageSettings
             // 
+            this.panelCarnageSettings.Controls.Add(this.comboBox2);
             this.panelCarnageSettings.Controls.Add(this.numericUpDown1);
             this.panelCarnageSettings.Controls.Add(this.label2);
             this.panelCarnageSettings.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelCarnageSettings.Location = new System.Drawing.Point(10, 352);
+            this.panelCarnageSettings.Location = new System.Drawing.Point(10, 389);
             this.panelCarnageSettings.Name = "panelCarnageSettings";
             this.panelCarnageSettings.Size = new System.Drawing.Size(192, 90);
             this.panelCarnageSettings.TabIndex = 11;
+            // 
+            // comboBox2
+            // 
+            this.comboBox2.Dock = System.Windows.Forms.DockStyle.Top;
+            this.comboBox2.FormattingEnabled = true;
+            this.comboBox2.Items.AddRange(new object[] {
+            "\tNo filter",
+            "\tAll PvP",
+            "\tAll PvE",
+            "\tTrials",
+            "\tIron Banner"});
+            this.comboBox2.Location = new System.Drawing.Point(0, 53);
+            this.comboBox2.Name = "comboBox2";
+            this.comboBox2.Size = new System.Drawing.Size(192, 27);
+            this.comboBox2.TabIndex = 18;
+            this.comboBox2.SelectedIndexChanged += new System.EventHandler(this.comboBox2_SelectedIndexChanged);
+            this.comboBox2.SelectedValueChanged += new System.EventHandler(this.comboBox2_SelectedValueChanged);
             // 
             // numericUpDown1
             // 
             this.numericUpDown1.Dock = System.Windows.Forms.DockStyle.Top;
             this.numericUpDown1.Location = new System.Drawing.Point(0, 29);
             this.numericUpDown1.Maximum = new decimal(new int[] {
-            200,
+            2000,
             0,
             0,
             0});
@@ -160,7 +179,7 @@ namespace Carnage_Clips
             this.btnCarnageSettings.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCarnageSettings.Font = new System.Drawing.Font("Microsoft YaHei UI", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnCarnageSettings.ForeColor = System.Drawing.Color.White;
-            this.btnCarnageSettings.Location = new System.Drawing.Point(10, 307);
+            this.btnCarnageSettings.Location = new System.Drawing.Point(10, 344);
             this.btnCarnageSettings.Name = "btnCarnageSettings";
             this.btnCarnageSettings.Size = new System.Drawing.Size(192, 45);
             this.btnCarnageSettings.TabIndex = 10;
@@ -175,7 +194,7 @@ namespace Carnage_Clips
             this.panelCharacterContainer.Controls.Add(this.btnCharacter2);
             this.panelCharacterContainer.Controls.Add(this.btnCharacter1);
             this.panelCharacterContainer.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelCharacterContainer.Location = new System.Drawing.Point(10, 145);
+            this.panelCharacterContainer.Location = new System.Drawing.Point(10, 182);
             this.panelCharacterContainer.Name = "panelCharacterContainer";
             this.panelCharacterContainer.Size = new System.Drawing.Size(192, 162);
             this.panelCharacterContainer.TabIndex = 9;
@@ -189,6 +208,7 @@ namespace Carnage_Clips
             this.comboBox1.Size = new System.Drawing.Size(192, 27);
             this.comboBox1.TabIndex = 17;
             this.comboBox1.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
+            this.comboBox1.SelectionChangeCommitted += new System.EventHandler(this.comboBox1_SelectionChangeCommitted);
             // 
             // btnCharacter3
             // 
@@ -249,7 +269,7 @@ namespace Carnage_Clips
             this.btnUserSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnUserSearch.Font = new System.Drawing.Font("Microsoft YaHei UI", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnUserSearch.ForeColor = System.Drawing.Color.White;
-            this.btnUserSearch.Location = new System.Drawing.Point(10, 100);
+            this.btnUserSearch.Location = new System.Drawing.Point(10, 137);
             this.btnUserSearch.Name = "btnUserSearch";
             this.btnUserSearch.Size = new System.Drawing.Size(192, 45);
             this.btnUserSearch.TabIndex = 8;
@@ -261,9 +281,9 @@ namespace Carnage_Clips
             // 
             this.panel3.Controls.Add(this.panelSelectionIndication);
             this.panel3.Dock = System.Windows.Forms.DockStyle.Left;
-            this.panel3.Location = new System.Drawing.Point(0, 100);
+            this.panel3.Location = new System.Drawing.Point(0, 137);
             this.panel3.Name = "panel3";
-            this.panel3.Size = new System.Drawing.Size(10, 461);
+            this.panel3.Size = new System.Drawing.Size(10, 424);
             this.panel3.TabIndex = 7;
             // 
             // panelSelectionIndication
@@ -276,7 +296,7 @@ namespace Carnage_Clips
             // 
             // button2
             // 
-            this.button2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(137)))), ((int)(((byte)(58)))), ((int)(((byte)(51)))));
+            this.button2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(35)))), ((int)(((byte)(40)))), ((int)(((byte)(46)))));
             this.button2.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.button2.ForeColor = System.Drawing.Color.White;
@@ -302,7 +322,7 @@ namespace Carnage_Clips
             // 
             // label1
             // 
-            this.label1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(137)))), ((int)(((byte)(58)))), ((int)(((byte)(51)))));
+            this.label1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(35)))), ((int)(((byte)(40)))), ((int)(((byte)(46)))));
             this.label1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.label1.Font = new System.Drawing.Font("Microsoft YaHei UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label1.ForeColor = System.Drawing.Color.White;
@@ -375,6 +395,7 @@ namespace Carnage_Clips
         private System.Windows.Forms.ComboBox comboBox1;
         private System.Windows.Forms.NumericUpDown numericUpDown1;
         private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.ComboBox comboBox2;
     }
 }
 

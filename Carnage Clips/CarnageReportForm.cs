@@ -16,453 +16,495 @@ namespace Carnage_Clips
     {
 
         public bool IsBusy { get; set; }
-        MainForm parent;
-        Bungie_Profile SelectedUserAccount;
-        Bungie_Profile.Destiny_Character SelectedAccountCharacter;
-        Bungie_API_Client ReportClient;
+        MainForm parent;        
+        Bnet_Client ReportsClient;
+
         public CarnageReportForm(MainForm parentForm)
         {
 
             InitializeComponent();
             
             parent = parentForm;
-            ReportClient = new Bungie_API_Client();
-            ReportClient.API_Client_Event += ReportClient_API_Client_Event;
-            ReportClient.Bungie_API_Key = "9efe9b8eba3042afb081121d447fd981";
-        }
-        public void SetCharacter(Bungie_Profile.Destiny_Character inputCHar)
-        {
-            if (!IsBusy)
-            {
-                if (SelectedAccountCharacter != inputCHar)
-                {
-
-                    IsBusy = true;
-                    treePlayers.Nodes.Clear();
-                    treeCarnageReports.Nodes.Clear();
-
-                    SelectedUserAccount = inputCHar.AccountOwner;
-                    SelectedAccountCharacter = inputCHar;
-
-                    lblCarnageReports.Text = SelectedUserAccount.Bungie_Display_Name + " | " + inputCHar.Class;
-
-                    Task.Run(() => ReportClient.LoadCarnageReportList(inputCHar, parent.CarnageCountReq));
-                }
-            }
-        }
-        private void SetStatusMessage(string status = "", int add = 0, int setmax = 0)
-        {
-
-            if (InvokeRequired)
-            {
-                this.BeginInvoke((MethodInvoker)delegate
-                { SetStatusMessage(status, add, setmax); });
-                return;
-            }
-            lblStatus.Text = status;
-            lblStatus.Update();
-
-            if (setmax > 0)
-            {
-                progressBar1.Maximum = setmax;
-            }
-
-            if (progressBar1.Value + add <= progressBar1.Maximum)
-            {
-                progressBar1.Value += add;
-
-                lblStatus.Text = status +" - " + progressBar1.Value + "/" + progressBar1.Maximum;
-            }
-            else
-            {
-                progressBar1.Value = progressBar1.Maximum;
-            }
-
-            if (progressBar1.Value == progressBar1.Maximum)
-            {
-                lblStatus.Text = "Idle";
-                progressBar1.Maximum = 0;
-                progressBar1.Value = 0;
-            }
-            progressBar1.Update();
-
-            lblStatus.Update();
+            ReportsClient = new Bnet_Client();
+            ReportsClient.API_key = "9efe9b8eba3042afb081121d447fd981";
+            ReportsClient.Client_Event += Report_Client_Event;
         }
 
+        #region Updated Player Searching and Sorting
 
-        private void SetIdle()
-        {
-            if (InvokeRequired)
-            {
-                this.BeginInvoke((MethodInvoker)delegate
-                { SetIdle(); });
-                return;
-            }
-
-            progressBar1.Value = 0;
-            progressBar1.Maximum = 0;
-            lblStatus.Text = "Idle";
-        }
-
-        private void ReportClient_API_Client_Event(object sender, Bungie_API_Client.Client_Event_Type e)
+        //Neew event Handler for reprot client 
+        private void Report_Client_Event(object sender, Bnet_Client.BNet_Client_Event_Type e)
         {
             switch(e)
             {
-                case Bungie_API_Client.Client_Event_Type.SingleCarnageComplete:
-                    SetStatusMessage("Loading matches ",1, ReportClient.ReportsToLoad);
+                case Bnet_Client.BNet_Client_Event_Type.Carnage_List_Loaded:
+                    DisplayLoadedMatches((List<CarnageReport>)sender);
+                    SetStatusMessage("Loading post game reports", 0, ReportsClient.ReportsToLoad);
                     break;
-                case Bungie_API_Client.Client_Event_Type.AllCarnageComplete:
-                    SetIdle();
-                    IsBusy = false;
-                    Display_Matches_and_Players();
-                    break;
-                case Bungie_API_Client.Client_Event_Type.SingleCarnageFail:
-                    SetStatusMessage("Loading matches ", 1, ReportClient.ReportsToLoad);
-                    if(ReportClient.ReportsLoaded == ReportClient.ReportsToLoad)
+
+                case Bnet_Client.BNet_Client_Event_Type.Single_Carnage_Loaded:
+                    SetStatusMessage("Loading post game reports", 1, ReportsClient.ReportsToLoad);
+                    AddPlayersToMatches((CarnageReport)sender);
+
+                    if (ReportsClient.ReportsLoaded == ReportsClient.ReportsToLoad)
                     {
-                        SetIdle();
+                        System.Diagnostics.Debug.Print("All reports loaded");
+                        SortRecentPlayers();
+                    }
+                    break;
+                case Bnet_Client.BNet_Client_Event_Type.Single_Carnage_Fail:
+                    SetStatusMessage("Loading post game reports", 1, ReportsClient.ReportsToLoad);
+                    System.Diagnostics.Debug.Print("Match failed to load");
+
+                    if (ReportsClient.ReportsLoaded == ReportsClient.ReportsToLoad)
+                    {
+                        System.Diagnostics.Debug.Print("All reports loaded");
+                        SortRecentPlayers();
+                    }
+                    break;
+                case Bnet_Client.BNet_Client_Event_Type.Details_Loaded:
+                    RecentChecked++;
+                    SetStatusMessage("Checking recent players for twitch accounts ", 1, RecentToCheck);
+                    BNet_Profile holder = (BNet_Profile)sender;
+                    if(holder.Has_Twitch)
+                    {
+                        Recent_With_Twitch.Add(holder);
+                    }
+                    if(RecentChecked == RecentToCheck)
+                    {
+                        DisplayTwitchLinkedPlayers();
+
                         IsBusy = false;
-                        Display_Matches_and_Players();
                     }
                     break;
-                case Bungie_API_Client.Client_Event_Type.AllCarnageFail:
-                    SetIdle();
-                    IsBusy = false;
-                    break;
-            }
-        }
-
-
-        private void Display_Matches_and_Players()
-        {
-            if (InvokeRequired)
-            {
-                this.BeginInvoke((MethodInvoker)delegate
-                { Display_Matches_and_Players(); });
-                return;
-            }
-
-            foreach (Carnage_Report PGCR in ReportClient.RecentMatches)
-            {
-                TreeNode MatchNode = new TreeNode(PGCR.ActivityTypeID + " | " + PGCR.ActivitySpaceID);
-                MatchNode.Nodes.Add(PGCR.ActivityStart.ToString());
-                MatchNode.Nodes.Add("Game hash :" + PGCR.ActivityHash);
-                MatchNode.Nodes.Add("Location hash :" + PGCR.LocationHash);
-                MatchNode.Tag = PGCR;
-
-                foreach (Bungie_Profile player in PGCR.ActivityPlayers)
-                {
-                    TreeNode PlayerNode = new TreeNode(player.Bungie_Display_Name + "#" + player.Bungie_User_Code);
-                    if (player.MatchWeapons != null)
+                case Bnet_Client.BNet_Client_Event_Type.Details_Failed:
+                    RecentChecked++;
+                    SetStatusMessage("Checking recent players for twitch accounts ", 1, RecentToCheck);
+                    if (RecentChecked == RecentToCheck)
                     {
-                        foreach (Bungie_Profile.Destiny_Weapon wep in player.MatchWeapons)
-                        {
-                            TreeNode wepNode = new TreeNode(wep.WeaponIdentifier);
-                            wepNode.Nodes.Add("Kills : " + wep.WeaponKills);
-                            wepNode.Nodes.Add("Precision Ratio : " + wep.WeaponPrecisionRatio);
-
-                            if (wep.Suspected)
-                            {
-                                wepNode.BackColor = Color.Red;
-                                PlayerNode.BackColor = Color.Red;
-                                MatchNode.BackColor = Color.Red;
-                            }
-                            PlayerNode.Nodes.Add(wepNode);
-                        }
+                        DisplayTwitchLinkedPlayers();
+                        IsBusy = false;
                     }
-                    MatchNode.Nodes.Add(PlayerNode);
+                    break;
 
-                }
-                treeCarnageReports.Nodes.Add(MatchNode);
+                    
             }
 
-            foreach (Bungie_Profile sortedPlayer in ReportClient.RecentPlayers)
-            {
-                TreeNode RecentPlayerNode = new TreeNode(sortedPlayer.Bungie_Display_Name + "#" + sortedPlayer.Bungie_User_Code);
-                RecentPlayerNode.Tag = sortedPlayer;
-                treePlayers.Nodes.Add(RecentPlayerNode);
-            }
-            lblStatus.Text = "Recent players loaded, checking for twitch accounts";
+            System.Diagnostics.Debug.Print(RecentChecked + "/" + RecentToCheck);
 
-            Task.Run(() => QueueRecentPlayerList());
         }
 
-        #region Check Recent Players for twitch
+        List<string> RecentCompare;
+        List<BNet_Profile> RecentProcessed;
+        List<BNet_Profile> Recent_With_Twitch;
 
-
-        public List<Bungie_API_Client> RecentPlayerClients;
-        public int PlayersToCheck = 0;
-        public int PlayersChecked = 0;
-        private void QueueRecentPlayerList()
+        //Loads all players with a linked twitch account into the tree for a display 
+        //while the tool then searches through the vods
+        private void DisplayTwitchLinkedPlayers()
         {
             if (InvokeRequired)
             {
                 this.BeginInvoke((MethodInvoker)delegate
-                { QueueRecentPlayerList(); });
+                { DisplayTwitchLinkedPlayers(); });
                 return;
             }
 
-            if (treePlayers.Nodes.Count > 0)
+            treePlayers.Nodes.Clear();
+
+            Check_Alternate_Twitch_Naming();
+
+
+            foreach(BNet_Profile twitchLinked in Recent_With_Twitch)
             {
-                progressBar1.Value = 0;
-                progressBar1.Maximum = PlayersToCheck;
-                TwitchLinkedPlayers = new List<Bungie_Profile>();
-                RecentPlayerClients = new List<Bungie_API_Client>();
-                PlayersToCheck = treePlayers.Nodes.Count;
-                PlayersChecked = 0;
+                TreeNode PlayerNode = new TreeNode(twitchLinked.GlobalName());
+                PlayerNode.Nodes.Add(twitchLinked.TwitchName);
+                PlayerNode.Expand();
 
-                SetStatusMessage("Checking players for linked twitch accounts ",0 , PlayersToCheck);
-
-
-                foreach (TreeNode PlayerNode in treePlayers.Nodes)
-                {
-                    Bungie_API_Client playerClinent = new Bungie_API_Client();
-                    playerClinent.API_Client_Event += PlayerClinent_API_Client_Event;
-                    playerClinent.Bungie_API_Key = "9efe9b8eba3042afb081121d447fd981";
-
-                    RecentPlayerClients.Add(playerClinent);
-                    
-                    Task.Run(() => playerClinent.Load_Recent_BENT((Bungie_Profile)PlayerNode.Tag));
-
-                    
-                }
+                treePlayers.Nodes.Add(PlayerNode);
             }
+
+            QueueTwitchVods();
         }
 
-        private void ProcessRecentPlayerList()
+        private void Check_Alternate_Twitch_Naming()
         {
-            if (InvokeRequired)
+            foreach (BNet_Profile CheckAgainst in RecentProcessed)
             {
-                this.BeginInvoke((MethodInvoker)delegate
-                { ProcessRecentPlayerList(); });
-                return;
-            }
-
-            foreach (Bungie_Profile CheckAgainst in ReportClient.RecentPlayers)
-            {
-
-                string AltTwitch = null;
-                if (CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("twtich.tv/") || CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("twitch/") || CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("ttv") || CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("ttv/") || CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("ttvbtw")
-                               || CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("twitch-") || CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("ttv.") || CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("t.tv") || CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("live") || CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("twitch_") || CheckAgainst.Bungie_Display_Name.ToLower().Trim().Contains("twitch"))
+                if (CheckAgainst.BungieName != null)
                 {
-                    System.Diagnostics.Debug.Print("Matched a pattern name : " + CheckAgainst.Bungie_Display_Name);
-
-                    string tempName = CheckAgainst.Bungie_Display_Name.ToLower();
-                    tempName = tempName.Replace("twitch.tv/", " ");
-                    tempName = tempName.Replace("twitch/", " ");
-                    tempName = tempName.Replace("ttv", " ");
-                    tempName = tempName.Replace("ttvbtw", " ");
-                    tempName = tempName.Replace("t.tv", " ");
-                    tempName = tempName.Replace("live", " ");
-                    tempName = tempName.Replace("twitch_", " ");
-                    tempName = tempName.Replace("twitch", " ");
-                    tempName = tempName.Replace("ttv/", " ");
-                    tempName = tempName.Replace("ttv.", " ");
-                    tempName = tempName.Replace("(btw)", " ");
-
-
-                    tempName = tempName.Trim();
-                    tempName = Regex.Replace(tempName, "[^a-zA-Z0-9 _]", string.Empty);
-                    AltTwitch = tempName;
-
-
-
-                    if (TwitchLinkedPlayers.Contains(CheckAgainst))
+                    string AltTwitch = null;
+                    if (CheckAgainst.BungieName.ToLower().Trim().Contains("twtich.tv/") || CheckAgainst.BungieName.ToLower().Trim().Contains("twitch/") || CheckAgainst.BungieName.ToLower().Trim().Contains("ttv") || CheckAgainst.BungieName.ToLower().Trim().Contains("ttv/") || CheckAgainst.BungieName.ToLower().Trim().Contains("ttvbtw")
+                                   || CheckAgainst.BungieName.ToLower().Trim().Contains("twitch-") || CheckAgainst.BungieName.ToLower().Trim().Contains("ttv.") || CheckAgainst.BungieName.ToLower().Trim().Contains("t.tv") || CheckAgainst.BungieName.ToLower().Trim().Contains("live") || CheckAgainst.BungieName.ToLower().Trim().Contains("twitch_") || CheckAgainst.BungieName.ToLower().Trim().Contains("twitch"))
                     {
-                        Bungie_Profile subCheck = TwitchLinkedPlayers[TwitchLinkedPlayers.IndexOf(CheckAgainst)];
-                        if (subCheck.TwitchLinked)
+                        System.Diagnostics.Debug.Print("Matched a pattern name : " + CheckAgainst.BungieName);
+
+                        string tempName = CheckAgainst.BungieName.ToLower();
+                        tempName = tempName.Replace("twitch.tv/", " ");
+                        tempName = tempName.Replace("twitch/", " ");
+                        tempName = tempName.Replace("ttv", " ");
+                        tempName = tempName.Replace("ttvbtw", " ");
+                        tempName = tempName.Replace("t.tv", " ");
+                        tempName = tempName.Replace("live", " ");
+                        tempName = tempName.Replace("twitch_", " ");
+                        tempName = tempName.Replace("twitch", " ");
+                        tempName = tempName.Replace("ttv/", " ");
+                        tempName = tempName.Replace("ttv.", " ");
+                        tempName = tempName.Replace("(btw)", " ");
+
+
+                        tempName = tempName.Trim();
+                        tempName = Regex.Replace(tempName, "[^a-zA-Z0-9 _]", string.Empty);
+                        AltTwitch = tempName;
+
+
+
+                        if (Recent_With_Twitch.Contains(CheckAgainst))
                         {
-                            if (AltTwitch != null)
+                            System.Diagnostics.Debug.Print("Comparing twitch linked " + CheckAgainst.GlobalName());
+
+                            BNet_Profile subCheck = Recent_With_Twitch[Recent_With_Twitch.IndexOf(CheckAgainst)];
+                            if (subCheck.Has_Twitch)
                             {
-                                if (subCheck.TwitchName.ToLower().Trim() != AltTwitch.ToLower().Trim())
+                                if (AltTwitch != null)
                                 {
-                                    System.Diagnostics.Debug.Print("Alternate Twitch Naming Found for " + subCheck.Bungie_Display_Name + subCheck.Bungie_User_Code);
+                                    if (subCheck.TwitchName.ToLower().Trim() != AltTwitch.ToLower().Trim())
+                                    {
+                                        System.Diagnostics.Debug.Print("Alternate Twitch Naming Found for " + subCheck.GlobalName());
+                                        System.Diagnostics.Debug.Print("Alternate name : " + AltTwitch);
+
+
+                                        BNet_Profile AlternateProfile = new BNet_Profile();
+                                        AlternateProfile.LinkedMatches = subCheck.LinkedMatches;
+                                        AlternateProfile.BungieName = "Alternate account : " + subCheck.BungieName;
+                                        AlternateProfile.BungieCode = subCheck.BungieCode;
+                                        AlternateProfile.TwitchName = AltTwitch;
+                                        AlternateProfile.Has_Twitch = true;
+
+                                        Recent_With_Twitch.Add(AlternateProfile);
+
+                                        System.Diagnostics.Debug.Print("Added alternate twitch profile added");
+                                    }
                                 }
                             }
                         }
+                        else
+                        {
+                            CheckAgainst.TwitchName = AltTwitch;
+                            CheckAgainst.Has_Twitch = true;
+                            Recent_With_Twitch.Add(CheckAgainst);
+                        }
+                    }
+                }
+            }
+        }
+
+        //Loops through all recent players in the list and removes duplicate instances
+        //if a duplicate is found it adds the match time to their linked matches
+        //fires the twitch linked search at the end 
+        private void SortRecentPlayers()
+        {
+            if (InvokeRequired)
+            {
+                this.BeginInvoke((MethodInvoker)delegate
+                { SortRecentPlayers(); });
+                return;
+            }
+            treePlayers.Nodes.Clear();
+            RecentCompare = new List<string>();
+            RecentProcessed = new List<BNet_Profile>();
+
+            foreach(TreeNode matchNode in treeCarnageReports.Nodes)
+            {
+                CarnageReport postGame = (CarnageReport)matchNode.Tag;
+
+                foreach(BNet_Profile player in postGame.MatchPlayers)
+                {
+                    if(player.GlobalName() != parent.SelectedBNet.GlobalName())
+                    {
+                        if(!RecentCompare.Contains(player.GlobalName()))
+                        {
+                            RecentCompare.Add(player.GlobalName());
+                            player.LinkedMatches.Add(postGame);
+                            RecentProcessed.Add(player);
+                        }
+                        else
+                        {
+                            foreach(BNet_Profile prof in RecentProcessed)
+                            {
+                                if(prof.GlobalName() == player.GlobalName())
+                                {
+                                    prof.LinkedMatches.Add(postGame);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            System.Diagnostics.Debug.Print("All recent players loaded");
+            System.Diagnostics.Debug.Print("Checking and readding players to all matches");
+
+            foreach(BNet_Profile player in RecentProcessed)
+            {
+                TreeNode PlayerNode = new TreeNode(player.GlobalName());
+                PlayerNode.Tag = player;
+                foreach(CarnageReport linked in player.LinkedMatches)
+                {
+                    PlayerNode.Nodes.Add(linked.instanceId);
+                }
+                treePlayers.Nodes.Add(PlayerNode);
+            }
+
+            Check_Recent_Twitch_Link();
+
+        }
+
+
+        //Loads all the players for a match into the tree
+        private void AddPlayersToMatches(CarnageReport inputMatch)
+        {
+            if (InvokeRequired)
+            {
+                this.BeginInvoke((MethodInvoker)delegate
+                { AddPlayersToMatches(inputMatch); });
+                return;
+            }
+
+            foreach (TreeNode MatchNode in treeCarnageReports.Nodes)
+            {
+                CarnageReport compare = (CarnageReport)MatchNode.Tag;
+                if(compare.instanceId == inputMatch.instanceId)
+                {
+                    MatchNode.Nodes.Clear();
+                    MatchNode.Nodes.Add("Place Definition : " + parent.ManifestActivityDefinition(inputMatch.referenceId));
+                    MatchNode.Nodes.Add("Date code : " + inputMatch.matchDateString);
+                    MatchNode.Nodes.Add("Location Hash : " + inputMatch.referenceId);
+                    MatchNode.Nodes.Add("Activity Type Hash : " + inputMatch.directorActivityHash);
+                    foreach(BNet_Profile player in inputMatch.MatchPlayers)
+                    {
+                        MatchNode.Nodes.Add(player.GlobalName());
+                    }
+                    MatchNode.Tag = inputMatch;
+                    break;
+                }
+            }
+        }
+
+
+        //Loads the list of matches while the user waits for the players to populate
+        private void DisplayLoadedMatches(List<CarnageReport> Matches)
+        {
+            if (InvokeRequired)
+            {
+                this.BeginInvoke((MethodInvoker)delegate
+                { DisplayLoadedMatches(Matches); });
+                return;
+            }
+
+            treeCarnageReports.Nodes.Clear();
+            foreach(CarnageReport match in Matches)
+            {
+                TreeNode MatchNode = new TreeNode(parent.ManifestActivityDefinition(match.directorActivityHash));
+                MatchNode.Tag = match;
+
+                treeCarnageReports.Nodes.Add(MatchNode);
+            }
+        }
+
+        private int RecentChecked = 0;
+        private int RecentToCheck = 0;
+        public void Check_Recent_Twitch_Link()
+        {
+
+            System.Diagnostics.Debug.Print("Checking players for linked twitch accounts");
+            Recent_With_Twitch = new List<BNet_Profile>();
+            RecentChecked = 0;
+            RecentToCheck = RecentProcessed.Count;
+            SetStatusMessage("Checking recent players for twitch accounts ", 0, RecentToCheck);
+
+            int i = 1;
+            foreach (BNet_Profile player in RecentProcessed)
+            {
+                Bnet_Client subClient = new Bnet_Client();
+                subClient.API_key = ReportsClient.API_key;
+                subClient.Client_Event += Report_Client_Event;
+
+                
+                Task.Run(() => subClient.Load_Detailed_Bnet(player));
+
+                System.Diagnostics.Debug.Print("Player queued " + i.ToString());
+                i++;
+            }
+
+
+        }
+
+        #endregion
+
+        //New set character method
+        public Destiny_Character CurrentCharacter;
+        public void UpdateSelectedCharacter(Destiny_Character SelectedChar)
+        {
+            if (!IsBusy)
+            {
+
+                if (parent.SelectedBNet != null && SelectedChar != CurrentCharacter )
+                {
+                    IsBusy = true;
+                    treePlayers.Nodes.Clear();
+                    treeCarnageReports.Nodes.Clear();
+                    CurrentCharacter = SelectedChar;
+                    lblCarnageReports.Text = parent.SelectedBNet.SelectedMemebership.platformDisplayName + " | " + SelectedChar.classHash;
+                    ReportsClient.LoadedProfile = parent.SelectedBNet;
+                    Task.Run(() => ReportsClient.Load_Carnage_Report_List(SelectedChar, parent.CarnageCountReq,parent.MatchFilterCode));
+                    
+                }
+
+            }
+
+        }
+
+
+
+        #region Searching and loading twitch vods
+        private List<TreeNode> ResetStreamNodes;
+        private int ChannelsToCrawl = 0;
+        private int CHannelsCrawled = 0;
+
+
+        //Depricated method for loading users into vods
+        private void QueueTwitchVods()
+        {
+            IsBusy = true;
+            ResetStreamNodes = new List<TreeNode>();
+            ChannelsToCrawl = Recent_With_Twitch.Count;
+            CHannelsCrawled = 0;
+
+            progressBar1.Value = 0;
+            progressBar1.Maximum = ChannelsToCrawl;
+            SetStatusMessage("Checking users for vods", 0, ChannelsToCrawl);
+
+            foreach (BNet_Profile checkUser in Recent_With_Twitch)
+            {
+                Task.Run(() => Check_User_Vods(checkUser));
+            }
+        }
+
+        public void Check_User_Vods(BNet_Profile inputUser)
+        {
+            if(parent.Main_Twitch_Client.isValidated)
+            {
+                TTV_Client vodClient = new TTV_Client();
+                vodClient.Twitch_API_Key = parent.Main_Twitch_Client.Twitch_API_Key;
+                vodClient.Twitch_API_Secret = parent.Main_Twitch_Client.Twitch_API_Secret;
+                vodClient.Twitch_API_Token = parent.Main_Twitch_Client.Twitch_API_Token;
+
+                vodClient.Client_Event += VodClient_Client_Event;
+
+                vodClient.Check_and_match_Vods(inputUser.TwitchName);
+
+                if (vodClient.Current_Channel != null)
+                {
+                    if(vodClient.Current_Channel.ChannelVideos != null)
+                    {
+                        //vodClient.Current_Channel.SetChannelIcon();
+                        TreeNode MatchedStreamerNode = new TreeNode(inputUser.GlobalName() + " | twitch.tv/" + inputUser.TwitchName);
+                        MatchedStreamerNode.Tag = inputUser;
+
+                        foreach(Twitch_Vod vod in vodClient.Current_Channel.ChannelVideos)
+                        {
+                            int i = 0;
+
+                            while(i < inputUser.LinkedMatches.Count)
+                            {
+                                DateTime vodCreated = vod.returnVodTime();
+                              
+                                DateTime AccountforDuration = vod.returnVodTime();
+                                AccountforDuration += vod.returnVodDuration();
+                                DateTime CheckAgainst = inputUser.LinkedMatches[i].returnMatchDate();
+
+                                if (vodCreated.Date == CheckAgainst.Date || CheckAgainst.Ticks < AccountforDuration.Ticks)
+                                {
+                                    if (CheckAgainst.Ticks > vodCreated.Ticks && CheckAgainst.Ticks < AccountforDuration.Ticks)
+                                    {
+
+                                        TimeSpan offset = CheckAgainst.TimeOfDay - vodCreated.TimeOfDay;
+
+                                        System.Diagnostics.Debug.Print("offseting : " + offset.ToString());
+
+                                        if (offset.Hours < 0)
+                                        {
+                                            offset = offset.Add(new TimeSpan(24, 0, 0));
+                                            System.Diagnostics.Debug.Print("Corrected Negative offset : " + offset.ToString());
+                                        }
+
+
+                                        string twitchLink = "http://www.twitch.tv";
+
+                                        //if (vod.Video_Duration.Contains("."))
+                                        //{
+                                          //  int Voddays = 0;
+                                          //
+                                            //string[] daySplit = vod.videoDuration.ToString().Split('.');
+                                            //
+                                            //Voddays = Convert.ToInt32(daySplit[0].ToString());
+
+                                            //Voddays *= 24;
+                                            //
+                                            //Voddays += offset.Hours;
+
+                                            //twitchLink = vod.videoLink + "?t=" + Voddays.ToString() + "h" + offset.Minutes + "m" + offset.Seconds + "s";
+
+                                        //}
+                                        //else
+                                        //{
+                                            twitchLink = vod.Video_Url + "?t=" + offset.Hours + "h" + offset.Minutes + "m" + offset.Seconds + "s";
+                                        //}
+
+
+
+
+                                        System.Diagnostics.Debug.Print("ADDING MATCH NODE : for " + inputUser.GlobalName() + " | linked matches found : " + inputUser.LinkedMatches.Count.ToString() + " on match : " + i.ToString());
+                                        TreeNode twitchNode = new TreeNode(twitchLink);
+
+                                        twitchNode.Nodes.Add(inputUser.LinkedMatches[i].matchDateString);
+                                        twitchNode.Nodes.Add(inputUser.LinkedMatches[i].referenceId + " | " + inputUser.LinkedMatches[i].directorActivityHash);
+                                        twitchNode.Tag = twitchLink;
+                                        twitchNode.Nodes[0].Tag = twitchLink;
+                                        twitchNode.Nodes[1].Tag = twitchLink;
+                                        MatchedStreamerNode.Nodes.Add(twitchNode);
+
+                                    }
+
+                                }
+                                i += 1;
+                            }
+                        }
+
+
+                        if (MatchedStreamerNode.Nodes.Count > 0)
+                        {
+                            vodClient.Current_Channel.SetChannelIcon();
+                            System.Diagnostics.Debug.Print("Added match to node list");
+                            ResetStreamNodes.Add(MatchedStreamerNode);
+                        }
+
                     }
                     else
                     {
-                        CheckAgainst.TwitchName = AltTwitch;
-                        CheckAgainst.TwitchLinked = true;
-                        TwitchLinkedPlayers.Add(CheckAgainst);
+                        System.Diagnostics.Debug.Print("Channel " + inputUser.TwitchName + " has no VoDs");
                     }
                 }
-            }
-
-
-            //Can loop back through to add back into matches here
-
-            if(TwitchLinkedPlayers.Count > 0)
-            {
-                //Search for twitch VODS after resettinge the player tree
-
-                treePlayers.Nodes.Clear();
-
-                foreach(Bungie_Profile linkedPlayer in TwitchLinkedPlayers)
+                else
                 {
-                    TreeNode twitchPlayer = new TreeNode(linkedPlayer.Bungie_Display_Name + " | twitch.tv/" + linkedPlayer.TwitchName);
-                    twitchPlayer.Tag = linkedPlayer;
-                    treePlayers.Nodes.Add(twitchPlayer);
+                    System.Diagnostics.Debug.Print("Could not find channel : " + inputUser.TwitchName);
                 }
 
-                SetStatusMessage("Checking for vods",0, TwitchLinkedPlayers.Count);
-                Task.Run(() => CheckTwitchVODS());
-            }
-        }
-
-        public List<Bungie_Profile> TwitchLinkedPlayers;
-        private void PlayerClinent_API_Client_Event(object sender, Bungie_API_Client.Client_Event_Type e)
-        {
-            
-            PlayersChecked += 1;
-
-            switch (e)
-            {
-                case Bungie_API_Client.Client_Event_Type.RecentPlayerBnetLoaded:
-                    
-                    Bungie_Profile ReturnedUser = (Bungie_Profile)sender;
-                    if(ReturnedUser.TwitchLinked)
-                    {
-                        TwitchLinkedPlayers.Add(ReturnedUser);
-
-                        System.Diagnostics.Debug.Print("Twitch foudn for " + ReturnedUser.Bungie_Display_Name);
-                    }
-                    SetStatusMessage("Checking players for linked twitch accounts ",1, PlayersToCheck);
-                    break;
-                case Bungie_API_Client.Client_Event_Type.RecentPlayerBnetFailed:
-                    //PlayersChecked += 1;
-                    SetStatusMessage("Checking players for linked twitch accounts ",1, PlayersToCheck);
-                    break;
-            }
-
-            System.Diagnostics.Debug.Print("Players checked : " + PlayersChecked + "/" + PlayersToCheck);
-            if(PlayersToCheck == PlayersChecked)
-            {
-                
-                SetIdle();
-                ProcessRecentPlayerList();
-            }
-           
-        }
-        #endregion
-
-        #region Checking for VODS and Resetting StreamTree
-
-        private void CheckUserVods(Bungie_Profile InputUser)
-        {
-          
-            if (parent.Main_Twitch_Client.Is_Validated == Twitch_Client.Twitch_Validation_Status.Success)
-            {
-                Twitch_Client vodClient = new Twitch_Client();
-                vodClient.Twitch_ClientID = "abvhdv9zyqhefmnbjz3fljxx3hpc7u";
-                vodClient.Twitch_Client_Secret = "h7bled1w6wracl3bytlhqwra3d7pr8";
-                vodClient.Twitch_Client_Token = parent.Main_Twitch_Client.Twitch_Client_Token;
-
-                try
-                {
-                    vodClient.Twitch_Find_Channels(InputUser.TwitchName, true);
-                    if (vodClient.Found_Channels.Count > 0)
-                    {
-
-                        TwitchCreator possibleStreaamer = vodClient.Found_Channels[0];
-                        vodClient.Load_Channel_Videos(possibleStreaamer);
-
-                        //linkedGuardian.liveNow = possibleStreaamer.Live_Now;
-
-                        System.Diagnostics.Debug.Print("user " + possibleStreaamer.Username + " is live ");
-
-                        if (possibleStreaamer.Channel_Saved_Videos != null && possibleStreaamer.Channel_Saved_Videos.Count > 0)
-                        {
-
-                            TreeNode MatchedStreamNode = new TreeNode(InputUser.Bungie_Display_Name + " | twitch.tv/" + InputUser.TwitchName);
-                            MatchedStreamNode.Tag = InputUser;
-
-                            foreach (TwitchVideo vod in possibleStreaamer.Channel_Saved_Videos)
-                            {
-                                int i = 0;
-
-                                while (i < InputUser.LinkedMatchTimes.Count)
-                                {
-                                    DateTime AccountforDuration = vod.videoCreated;
-                                    AccountforDuration += vod.videoDuration;
-                                    DateTime CheckAgainst = InputUser.LinkedMatchTimes[i];
-
-                                    if (vod.videoCreated.Date == CheckAgainst.Date || CheckAgainst.Ticks < AccountforDuration.Ticks)
-                                    {
-                                        if (CheckAgainst.Ticks > vod.videoCreated.Ticks && CheckAgainst.Ticks < AccountforDuration.Ticks)
-                                        {
-
-                                            TimeSpan offset = CheckAgainst.TimeOfDay - vod.videoCreated.TimeOfDay;
-
-                                            System.Diagnostics.Debug.Print("offseting : " + offset.ToString());
-
-                                            if (offset.Hours < 0)
-                                            {
-                                                offset = offset.Add(new TimeSpan(24, 0, 0));
-                                                System.Diagnostics.Debug.Print("Corrected Negative offset : " + offset.ToString());
-                                            }
-
-
-                                            string twitchLink = "http://www.twitch.tv";
-
-                                            if (vod.videoDuration.ToString().Contains("."))
-                                            {
-                                                int Voddays = 0;
-
-                                                string[] daySplit = vod.videoDuration.ToString().Split('.');
-
-                                                Voddays = Convert.ToInt32(daySplit[0].ToString());
-
-                                                Voddays *= 24;
-
-                                                Voddays += offset.Hours;
-
-                                                twitchLink = vod.videoLink + "?t=" + Voddays.ToString() + "h" + offset.Minutes + "m" + offset.Seconds + "s";
-
-                                            }
-                                            else
-                                            {
-                                                twitchLink = vod.videoLink + "?t=" + offset.Hours + "h" + offset.Minutes + "m" + offset.Seconds + "s";
-                                            }
-
-
-
-
-                                            System.Diagnostics.Debug.Print("ADDING MATCH NODE : for " + InputUser.Bungie_Display_Name + " | linked matches found : " + InputUser.LinkedMatches.Count.ToString() + " on match : " + i.ToString());
-                                            TreeNode twitchNode = new TreeNode(twitchLink);
-
-                                            twitchNode.Nodes.Add(InputUser.LinkedMatchTimes[i].ToString());
-                                            twitchNode.Nodes.Add(InputUser.LinkedMatches[i].ActivityTypeID + " | " + InputUser.LinkedMatches[i].ActivitySpaceID);
-                                            twitchNode.Tag = twitchLink;
-                                            twitchNode.Nodes[0].Tag = twitchLink;
-                                            twitchNode.Nodes[1].Tag = twitchLink;
-                                            MatchedStreamNode.Nodes.Add(twitchNode);
-
-                                        }
-
-                                    }
-                                    i += 1;
-                                }
-                            }
-
-                            if (MatchedStreamNode.Nodes.Count > 0)
-                            {
-                                ResetStreamNodes.Add(MatchedStreamNode);
-                            }
-
-                        }
-                    }
-                }
-                catch
-                {
-
-                }
-
-                SetStatusMessage("Processing linked twitch accounts for vods ", 1, 0);
+                SetStatusMessage("Processing linked twitch accounts for vods ", 1, ChannelsToCrawl);
                 CHannelsCrawled += 1;
 
-                if(CHannelsCrawled >= ChannelsToCrawl)
+                if (CHannelsCrawled >= ChannelsToCrawl)
                 {
                     IsBusy = false;
                     DisplayVODS();
@@ -473,7 +515,7 @@ namespace Carnage_Clips
 
         private void DisplayVODS()
         {
-            if(InvokeRequired)
+            if (InvokeRequired)
             {
                 this.BeginInvoke((MethodInvoker)delegate
                 { DisplayVODS(); });
@@ -481,30 +523,13 @@ namespace Carnage_Clips
             }
             IsBusy = false;
             treePlayers.Nodes.Clear();
+
             ResetStreamTree(ResetStreamNodes);
         }
 
-        private List<TreeNode> ResetStreamNodes;
-        private int ChannelsToCrawl = 0;
-        private int CHannelsCrawled = 0;
 
-        private void CheckTwitchVODS()
-        {
-            IsBusy = true;
-            ResetStreamNodes = new List<TreeNode>();
-            ChannelsToCrawl = TwitchLinkedPlayers.Count;
-            CHannelsCrawled = 0;
 
-            progressBar1.Value = 0;
-            progressBar1.Maximum = ChannelsToCrawl;
-            SetStatusMessage("Checking users for vods", 0, ChannelsToCrawl);
-
-            foreach(Bungie_Profile checkUser in TwitchLinkedPlayers)
-            {
-                Task.Run(() => CheckUserVods(checkUser));
-            }
-        }
-
+        //Somewhat depricated method for clearing and resorting the vods found
         private void ResetStreamTree(List<TreeNode> streamers)
         {
             if (InvokeRequired)
@@ -514,13 +539,10 @@ namespace Carnage_Clips
                 return;
             }
             List<DateTime> MatchedTimes = new List<DateTime>();
-            treePlayers.Nodes.Clear();
+           
+
             foreach (TreeNode streamerNode in streamers)
             {
-                //treeviewStreamList.Nodes.Add(streamerNode);
-                //Sort by date and time here and sub match date and time here
-                //lRecentMatches.Sort((x, y) => y.ActivityStart.CompareTo(x.ActivityStart));
-                //Create a list of dates for each streamer, sort the sub dates, then sort the main streamers by sub date[0]
                 if (streamerNode.Nodes.Count > 1)
                 {
 
@@ -528,8 +550,8 @@ namespace Carnage_Clips
                     List<DateTime> SubMatchTimes = new List<DateTime>();
                     foreach (TreeNode linkNode in streamerNode.Nodes)
                     {
-                        SubMatchTimes.Add(Convert.ToDateTime(linkNode.Nodes[0].Text));
-
+                        SubMatchTimes.Add(DateTime.Parse(linkNode.Nodes[0].Text));
+                        System.Diagnostics.Debug.Print(linkNode.Nodes[0].Text);
                     }
 
                     SubMatchTimes.Sort((x, y) => y.CompareTo(x));
@@ -537,7 +559,7 @@ namespace Carnage_Clips
                     {
                         foreach (TreeNode readd in streamerNode.Nodes)
                         {
-                            if (readd.Nodes[0].Text == matchCompare.ToString())
+                            if (DateTime.Parse(readd.Nodes[0].Text).ToString() == matchCompare.ToString())
                             {
                                 SubMatches.Add(readd);
                             }
@@ -545,16 +567,17 @@ namespace Carnage_Clips
                     }
 
                     streamerNode.Nodes.Clear();
+
                     foreach (TreeNode addTo in SubMatches)
                     {
                         streamerNode.Nodes.Add(addTo);
                     }
 
-                    MatchedTimes.Add(Convert.ToDateTime(streamerNode.Nodes[0].Nodes[0].Text));
+                    MatchedTimes.Add(DateTime.Parse(streamerNode.Nodes[0].Nodes[0].Text));
                 }
                 else
                 {
-                    MatchedTimes.Add(Convert.ToDateTime(streamerNode.Nodes[0].Nodes[0].Text));
+                    MatchedTimes.Add(DateTime.Parse(streamerNode.Nodes[0].Nodes[0].Text));
                 }
 
             }
@@ -567,7 +590,7 @@ namespace Carnage_Clips
                 foreach (TreeNode streamerNode in streamers)
                 {
                     //System.Diagnostics.Debug.Print("Comparing time " + streamerNode.Nodes[0].Nodes[0])
-                    if (streamerNode.Nodes[0].Nodes[0].Text == compareTo.ToString() && !reAddStreams.Contains(streamerNode))
+                    if (DateTime.Parse(streamerNode.Nodes[0].Nodes[0].Text).ToString() == compareTo.ToString() && !reAddStreams.Contains(streamerNode))
                     {
                         reAddStreams.Add(streamerNode);
                     }
@@ -575,7 +598,10 @@ namespace Carnage_Clips
             }
 
             foreach (TreeNode stream in reAddStreams)
-            { treePlayers.Nodes.Add(stream); }
+            { 
+                treePlayers.Nodes.Add(stream); 
+            }
+            treePlayers.Update();
 
             lblPlayerReports.Text = "Streams Found : " + treePlayers.Nodes.Count;
 
@@ -628,22 +654,95 @@ namespace Carnage_Clips
             //treeviewCarnageList.Update();
             #endregion
         }
+        private void VodClient_Client_Event(object sender, TTV_Client.Twitch_Client_Event e)
+        {
+            // new NotImplementedException();
+        }
+
+
+
         #endregion
+
+
+
+
+
+        #region Status updating
+        private void SetStatusMessage(string status = "", int add = 0, int setmax = 0)
+        {
+
+            if (InvokeRequired)
+            {
+                this.BeginInvoke((MethodInvoker)delegate
+                { SetStatusMessage(status, add, setmax); });
+                return;
+            }
+            lblStatus.Text = status;
+            lblStatus.Update();
+
+            if (setmax > 0)
+            {
+                progressBar1.Maximum = setmax;
+            }
+
+            if (progressBar1.Value + add <= progressBar1.Maximum)
+            {
+                progressBar1.Value += add;
+
+                lblStatus.Text = status +" - " + progressBar1.Value + "/" + progressBar1.Maximum;
+            }
+            else
+            {
+                progressBar1.Value = progressBar1.Maximum;
+            }
+
+            if (progressBar1.Value == progressBar1.Maximum)
+            {
+                lblStatus.Text = "Idle";
+                progressBar1.Maximum = 0;
+                progressBar1.Value = 0;
+            }
+            progressBar1.Update();
+
+            lblStatus.Update();
+        }
+        private void SetIdle()
+        {
+            if (InvokeRequired)
+            {
+                this.BeginInvoke((MethodInvoker)delegate
+                { SetIdle(); });
+                return;
+            }
+
+            progressBar1.Value = 0;
+            progressBar1.Maximum = 0;
+            lblStatus.Text = "Idle";
+        }
+
+        #endregion
+
+        
+       
+       
+
+
+
+
+
+
         private void button1_Click(object sender, EventArgs e)
         {
 
             if (!IsBusy)
             {
                 IsBusy = true;
-                PlayersChecked = 0;
-                PlayersToCheck = 0;
-                treeCarnageReports.Nodes.Clear();
                 treePlayers.Nodes.Clear();
-
-                if (SelectedAccountCharacter != null)
-                {
-                    Task.Run(() => ReportClient.LoadCarnageReportList(SelectedAccountCharacter, parent.CarnageCountReq));
-                }
+                treeCarnageReports.Nodes.Clear();
+                lblStatus.Text = "Loading carnage report list";
+                lblCarnageReports.Text = parent.SelectedBNet.SelectedMemebership.platformDisplayName + " | " + CurrentCharacter.classHash;
+                ReportsClient.LoadedProfile = parent.SelectedBNet;
+                Task.Run(() => ReportsClient.Load_Carnage_Report_List(CurrentCharacter, parent.CarnageCountReq, parent.MatchFilterCode));
             }
         }
 
