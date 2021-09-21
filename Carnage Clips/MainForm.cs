@@ -205,6 +205,7 @@ namespace Carnage_Clips
 
             if (Application.ProductVersion != LatestVerion)
             {
+                System.Diagnostics.Debug.Print(Application.ProductVersion.ToString() + " | " + LatestVerion);
                 UpdateGuardianClient();
             }
         }
